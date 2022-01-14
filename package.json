@@ -1,0 +1,21 @@
+{
+  "name": "gatsby-source-qxpcms",
+  "version": "0.0.2",
+  "description": "qxpCMS source plugin for gatsby",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andreme/gatsby-source-qxpcms.git"
+  },
+  "homepage": "https://github.com/andreme/gatsby-source-qxpcms",
+  "author": "Andre Meyer",
+  "keywords": [
+    "gatsby",
+    "gatsby-plugin",
+    "qxpcms"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "2"
+  }
+}
