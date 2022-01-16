@@ -11,6 +11,36 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 
 	const typeDefs = [
 		schema.buildObjectType({
+			name: 'CMSFile',
+			fields: {
+				name: {
+					type: 'String',
+				},
+				URL: {
+					type: 'String',
+				},
+				hash: {
+					type: 'String',
+				},
+				localFile: {
+					type: 'File',
+					resolve(source) {
+						if (source?.URL) {
+							return createRemoteFileNode({
+								url: source.URL,
+								store,
+								cache,
+								createNode,
+								createNodeId,
+								reporter,
+							});
+						}
+						return null;
+					},
+				},
+			},
+		}),
+		schema.buildObjectType({
 			name: 'CMSImage',
 			fields: {
 				name: {
