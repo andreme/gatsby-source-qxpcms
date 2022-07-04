@@ -79,7 +79,11 @@ exports.sourceNodes = async ({
 	createContentDigest,
 	createNodeId,
 }, {url, api_key}) => {
-	const {createNode} = actions;
+	const {createNode} = actions; // touchNode for incremental sync
+	// // Touch existing nodes so Gatsby doesn't garbage collect them.
+	// Object.values(store.getState().nodes)
+	// 	.filter(n => n.internal.type.slice(0, 8) === typePrefix)
+	// 	.forEach(n => touchNode(n));
 
 	const info = await (await fetch(`${url}raw-data/info`, {headers: {'x-qxpcms-api-key': api_key}})).json();
 
