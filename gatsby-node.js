@@ -81,16 +81,41 @@ exports.sourceNodes = async ({
 }, {url, api_key}) => {
 	const {createNode} = actions;
 
-	const response = await fetch(`${url}raw-data`, {headers: {'x-qxpcms-api-key': api_key}});
-	const body = await response.text();
+	const info = await (await fetch(`${url}raw-data/info`, {headers: {'x-qxpcms-api-key': api_key}})).json();
 
-	body.split('\n').map(JSON.parse).forEach(({name, data}) => {
+	for (const {name, values} of info.bags) {
 		createNode({
-			...data,
+			...values,
 			internal: {
 				type: name,
-				contentDigest: createContentDigest(data),
+				contentDigest: createContentDigest(values),
 			},
 		});
-	});
+	}
+
+	for (const list of info.lists) {
+		let next = undefined;
+		do {
+			const data = await (await fetch(`${url}raw-data/list/${list.id}`, {
+				method: 'post',
+				body: JSON.stringify({continuationMarker: next}),
+				headers: {
+					'x-qxpcms-api-key': api_key,
+					'Content-Type': 'application/json',
+				},
+			})).json();
+
+			for (const item of data.items) {
+				createNode({
+					...item,
+					internal: {
+						type: list.name,
+						contentDigest: createContentDigest(item),
+					},
+				});
+			}
+
+			next = data.continuationMarker;
+		} while (next);
+	}
 };
