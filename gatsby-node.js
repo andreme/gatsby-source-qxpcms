@@ -5,11 +5,19 @@ const {ApolloClient, HttpLink, InMemoryCache, gql} = require('@apollo/client/cor
 exports.createSchemaCustomization = async ({actions, schema, store, cache, createNodeId, reporter}, {url, api_key}) => {
 	const {createTypes, createNode} = actions;
 
-	// TODO also use graphql
-	const response = await fetch(`${url}gatsby-schema`, {headers: {'x-qxpcms-api-key': api_key}});
-	const body = await response.text();
+	const client = createCMSClient(url, api_key);
 
-	createTypes(body);
+	const {data: {cms: {gatsbySchema}}} = await client.query({
+		query: gql`
+			query {
+				cms {
+					gatsbySchema
+				}
+			}
+		`,
+	});
+
+	createTypes(gatsbySchema);
 
 	const typeDefs = [
 		schema.buildObjectType({
@@ -87,19 +95,7 @@ exports.sourceNodes = async ({
 }, {url, api_key}) => {
 	const {createNode, touchNode} = actions;
 
-	const client = new ApolloClient({
-		defaultOptions: {
-			query: {
-				fetchPolicy: 'no-cache',
-			},
-		},
-		link: new HttpLink({
-			uri: `${url}graphql`,
-			headers: {'x-qxpcms-api-key': api_key},
-			fetch,
-		}),
-		cache: new InMemoryCache(),
-	})
+	const client = createCMSClient(url, api_key);
 
 	// TODO also use graphql
 	const info = await (await fetch(`${url}raw-data/info`, {headers: {'x-qxpcms-api-key': api_key}})).json();
@@ -166,4 +162,20 @@ exports.onPostBuild = async ({cache}) => {
 
 function getCacheKey(listName) {
 	return `sync-timestamp-${listName}`;
+}
+
+function createCMSClient(url, api_key) {
+	return new ApolloClient({
+		defaultOptions: {
+			query: {
+				fetchPolicy: 'no-cache',
+			},
+		},
+		link: new HttpLink({
+			uri: `${url}graphql`,
+			headers: {'x-qxpcms-api-key': api_key},
+			fetch,
+		}),
+		cache: new InMemoryCache(),
+	});
 }
