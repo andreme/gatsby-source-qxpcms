@@ -97,20 +97,41 @@ exports.sourceNodes = async ({
 
 	const client = createCMSClient(url, api_key);
 
-	// TODO also use graphql
-	const info = await (await fetch(`${url}raw-data/info`, {headers: {'x-qxpcms-api-key': api_key}})).json();
+	const {data: {cms: {lists, bags}}} = await client.query({
+		query: gql`
+			query {
+				cms {
+					lists {
+						name
+						gqlSelect
+						namePlural
+					}
+					bags {
+						id
+						name
+						active
+						caption
+						values
+						created
+						updated
+					}
+				}
+			}
+		`,
+	});
 
-	for (const {name, values} of info.bags) {
+	for (const {name, values, ...systemValues} of bags) {
+		const bagValues = {...values, ...systemValues};
 		createNode({
-			...values,
+			...bagValues,
 			internal: {
 				type: name,
-				contentDigest: createContentDigest(values),
+				contentDigest: createContentDigest(bagValues),
 			},
 		});
 	}
 
-	for (const list of info.lists) {
+	for (const list of lists) {
 		let lastUpdated = (await cache.get(getCacheKey(list.name))) ?? '1970-01-01T00:00:01.000Z';
 
 		getNodesByType(list.name).forEach(node => touchNode(node)); // Touch existing nodes so Gatsby doesn't garbage collect them.
@@ -120,8 +141,8 @@ exports.sourceNodes = async ({
 				query: gql`
 					query ($lastUpdated: String!) {
 						lists {
-							items: ${list.queryName}(lastUpdated: $lastUpdated) {
-								${list.query}
+							items: ${list.namePlural}(lastUpdated: $lastUpdated) {
+								${list.gqlSelect}
 							}
 						}
 					}
