@@ -1,9 +1,11 @@
 const fetch = require('node-fetch');
 const {createRemoteFileNode} = require(`gatsby-source-filesystem`);
+const {ApolloClient, HttpLink, InMemoryCache, gql} = require('@apollo/client/core');
 
 exports.createSchemaCustomization = async ({actions, schema, store, cache, createNodeId, reporter}, {url, api_key}) => {
 	const {createTypes, createNode} = actions;
 
+	// TODO also use graphql
 	const response = await fetch(`${url}gatsby-schema`, {headers: {'x-qxpcms-api-key': api_key}});
 	const body = await response.text();
 
@@ -74,17 +76,32 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 	createTypes(typeDefs);
 };
 
+const lastSynced = {};
 exports.sourceNodes = async ({
 	actions,
 	createContentDigest,
 	createNodeId,
+	cache,
+	store,
+	getNodesByType,
 }, {url, api_key}) => {
-	const {createNode} = actions; // touchNode for incremental sync
-	// // Touch existing nodes so Gatsby doesn't garbage collect them.
-	// Object.values(store.getState().nodes)
-	// 	.filter(n => n.internal.type.slice(0, 8) === typePrefix)
-	// 	.forEach(n => touchNode(n));
+	const {createNode, touchNode} = actions;
 
+	const client = new ApolloClient({
+		defaultOptions: {
+			query: {
+				fetchPolicy: 'no-cache',
+			},
+		},
+		link: new HttpLink({
+			uri: `${url}graphql`,
+			headers: {'x-qxpcms-api-key': api_key},
+			fetch,
+		}),
+		cache: new InMemoryCache(),
+	})
+
+	// TODO also use graphql
 	const info = await (await fetch(`${url}raw-data/info`, {headers: {'x-qxpcms-api-key': api_key}})).json();
 
 	for (const {name, values} of info.bags) {
@@ -98,28 +115,55 @@ exports.sourceNodes = async ({
 	}
 
 	for (const list of info.lists) {
-		let next = undefined;
-		do {
-			const data = await (await fetch(`${url}raw-data/list/${list.id}`, {
-				method: 'post',
-				body: JSON.stringify({continuationMarker: next}),
-				headers: {
-					'x-qxpcms-api-key': api_key,
-					'Content-Type': 'application/json',
-				},
-			})).json();
+		let lastUpdated = (await cache.get(getCacheKey(list.name))) ?? '1970-01-01T00:00:01.000Z';
 
-			for (const item of data.items) {
+		getNodesByType(list.name).forEach(node => touchNode(node)); // Touch existing nodes so Gatsby doesn't garbage collect them.
+
+		do {
+			const {data: {lists: {items}}} = await client.query({
+				query: gql`
+					query ($lastUpdated: String!) {
+						lists {
+							items: ${list.queryName}(lastUpdated: $lastUpdated) {
+								${list.query}
+							}
+						}
+					}
+				`,
+				variables: {
+					lastUpdated,
+				},
+			});
+
+			for (const item of items) {
+				const {__typename, ...cleanItem} = item;
 				createNode({
-					...item,
+					...cleanItem,
 					internal: {
 						type: list.name,
-						contentDigest: createContentDigest(item),
+						contentDigest: createContentDigest(cleanItem),
 					},
 				});
 			}
 
-			next = data.continuationMarker;
-		} while (next);
+			const lastItem = items.length ? items[items.length - 1] : null;
+
+			if (!lastItem || lastItem.updated === lastUpdated) {
+				lastSynced[list.name] = (new Date((new Date(lastUpdated)).getTime() + 1)).toISOString();
+				break;
+			}
+
+			lastUpdated = lastItem.updated;
+		} while (lastUpdated);
 	}
 };
+
+exports.onPostBuild = async ({cache}) => {
+	for (const listName in lastSynced) {
+		await cache.set(getCacheKey(listName), lastSynced[listName]);
+	}
+}
+
+function getCacheKey(listName) {
+	return `sync-timestamp-${listName}`;
+}
