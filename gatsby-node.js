@@ -105,6 +105,8 @@ exports.sourceNodes = async ({
 						name
 						gqlSelect
 						namePlural
+						listType
+						active
 					}
 					bags {
 						id
@@ -131,7 +133,8 @@ exports.sourceNodes = async ({
 		});
 	}
 
-	for (const list of lists) {
+	const listsToQuery = lists.filter(list => list.listType !== 'Inline' && list.active);
+	for (const list of listsToQuery) {
 		let lastUpdated = (await cache.get(getCacheKey(list.name))) ?? '1970-01-01T00:00:01.000Z';
 
 		getNodesByType(list.name).forEach(node => touchNode(node)); // Touch existing nodes so Gatsby doesn't garbage collect them.
