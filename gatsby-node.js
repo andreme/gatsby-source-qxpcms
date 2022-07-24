@@ -123,7 +123,7 @@ exports.sourceNodes = async ({
 	});
 
 	for (const {name, values, ...systemValues} of bags) {
-		const bagValues = {...values, ...systemValues};
+		const bagValues = {...JSON.parse(values), ...systemValues};
 		createNode({
 			...bagValues,
 			internal: {
