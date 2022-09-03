@@ -37,7 +37,7 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 					resolve(source) {
 						if (source?.URL) {
 							return createRemoteFileNode({
-								url: source.URL,
+								url: encodeURI(source.URL),
 								store,
 								cache,
 								createNode,
@@ -67,7 +67,7 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 					resolve(source) {
 						if (source?.URL) {
 							return createRemoteFileNode({
-								url: source.URL,
+								url: encodeURI(source.URL),
 								store,
 								cache,
 								createNode,
