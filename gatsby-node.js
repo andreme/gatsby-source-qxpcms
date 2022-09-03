@@ -1,6 +1,8 @@
 const fetch = require('node-fetch');
 const {createRemoteFileNode} = require(`gatsby-source-filesystem`);
 const {ApolloClient, HttpLink, InMemoryCache, gql} = require('@apollo/client/core');
+const {URL} = require('url');
+const {parse} = require('path');
 
 exports.createSchemaCustomization = async ({actions, schema, store, cache, createNodeId, reporter}, {url, api_key}) => {
 	const {createTypes, createNode} = actions;
@@ -19,6 +21,24 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 
 	createTypes(gatsbySchema);
 
+	function resolveFileURL(source) {
+		if (source?.URL) {
+			const url = new URL(source.URL);
+			const {name, ext} = parse(decodeURIComponent(url.pathname));
+			return createRemoteFileNode({
+				url: encodeURI(source.URL),
+				store,
+				cache,
+				createNode,
+				createNodeId,
+				reporter,
+				ext,
+				name,
+			});
+		}
+		return null;
+	}
+
 	const typeDefs = [
 		schema.buildObjectType({
 			name: 'CMSFile',
@@ -34,19 +54,7 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 				},
 				localFile: {
 					type: 'File',
-					resolve(source) {
-						if (source?.URL) {
-							return createRemoteFileNode({
-								url: encodeURI(source.URL),
-								store,
-								cache,
-								createNode,
-								createNodeId,
-								reporter,
-							});
-						}
-						return null;
-					},
+					resolve: resolveFileURL,
 				},
 			},
 		}),
@@ -64,19 +72,7 @@ exports.createSchemaCustomization = async ({actions, schema, store, cache, creat
 				},
 				localFile: {
 					type: 'File',
-					resolve(source) {
-						if (source?.URL) {
-							return createRemoteFileNode({
-								url: encodeURI(source.URL),
-								store,
-								cache,
-								createNode,
-								createNodeId,
-								reporter,
-							});
-						}
-						return null;
-					},
+					resolve: resolveFileURL,
 				},
 			},
 		}),
