@@ -18,7 +18,7 @@
   "dependencies": {
     "@apollo/client": "^3.11.8",
     "graphql": "^16.9.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^2"
   },
   "devDependencies": {
     "gatsby-source-filesystem": "^5.13.1"
