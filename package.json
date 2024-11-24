@@ -2,6 +2,7 @@
   "name": "gatsby-source-qxpcms",
   "version": "0.1.2",
   "description": "qxpCMS source plugin for gatsby",
+  "packageManager": "pnpm@9.14.2",
   "scripts": {},
   "repository": {
     "type": "git",
