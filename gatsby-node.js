@@ -99,9 +99,8 @@ exports.sourceNodes = async ({
 				cms {
 					lists {
 						name
-						gqlSelect
+						graphQLSelect
 						namePlural
-						listType
 						active
 					}
 					bags {
@@ -119,7 +118,7 @@ exports.sourceNodes = async ({
 	});
 
 	for (const {name, values, ...systemValues} of bags) {
-		const bagValues = {...JSON.parse(values), ...systemValues};
+		const bagValues = {...values, ...systemValues};
 		createNode({
 			...bagValues,
 			internal: {
@@ -129,7 +128,7 @@ exports.sourceNodes = async ({
 		});
 	}
 
-	const listsToQuery = lists.filter(list => list.listType !== 'Inline' && list.active);
+	const listsToQuery = lists.filter(list => list.active);
 	for (const list of listsToQuery) {
 		let lastUpdated = (await cache.get(getCacheKey(list.name))) ?? '1970-01-01T00:00:01.000Z';
 
@@ -141,7 +140,7 @@ exports.sourceNodes = async ({
 					query ($lastUpdated: String!) {
 						lists {
 							items: ${list.namePlural}(lastUpdated: $lastUpdated) {
-								${list.gqlSelect}
+								${list.graphQLSelect}
 							}
 						}
 					}
