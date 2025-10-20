@@ -102,6 +102,7 @@ exports.sourceNodes = async ({
 						graphQLSelect
 						namePlural
 						active
+						system
 					}
 					bags {
 						id
