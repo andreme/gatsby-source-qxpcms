@@ -128,7 +128,7 @@ exports.sourceNodes = async ({
 		});
 	}
 
-	const listsToQuery = lists.filter(list => list.active);
+	const listsToQuery = lists.filter(list => list.active && !list.system);
 	for (const list of listsToQuery) {
 		let lastUpdated = (await cache.get(getCacheKey(list.name))) ?? '1970-01-01T00:00:01.000Z';
 
